@@ -1,0 +1,172 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="chrome=1">
+        <title>Kazuk.github.io by kazuk</title>
+
+        <link rel="stylesheet" href="stylesheets/styles.css">
+        <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+        <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+        <!--[if lt IE 9]>
+            <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
+    </head>
+    <body>
+        <script src="https://sverweij.github.io/mscgen_js/mscgen-inpage.js" defer></script>
+        <div class="wrapper">
+            <header>
+                <h1>Kazuk</h1>
+                <p></p>
+                <p class="view"><a href="https://github.com/kazuk">View My GitHub Profile</a></p>
+            </header>
+            <section>
+                <h2><a name="oauth_with_github" class="anchor" href="#oauth_with_github">Github と OAuth 連携するアプリケーションで API 呼び出しの為のトークンをとる方法</a></h2>
+                <p>Github って便利ですねー、すごく便利ですねーと。</p>
+                <p>便利な物なのでもっと便利に使いたいとか思うのは人の常、欲のなせる業であります。</p>
+                <p>Github の API を呼ぶ事で日常タスクを自動化したいとか、欲張り始めると必要になる API 呼び出しの為のトークンの取得の仕方ですが、OAuthでの認証を通すサンプルは多いのですが肝心のトークンをとる例がほとんどなかったりします。</p>
+                <p>というわけで、OAuth 認証を通してトークンを取得してユーザーの権限で API を呼び出すまでについて書いてみます。 </p>
+                <h3><a name="platform_requirements" href="#platform_requirements">動作環境</a></h3>
+                <p>記述にあたって利用した環境です</p>
+                <ul>
+                    <li>ASP.NET 4.5 with .NET Framework 4.5.2 に対する開発環境(私自身は Visual Studio 2015 Community を使用しました。)</li>
+                    <li>インターネットに普通につながる環境</li>
+                    <li>アプリケーション登録をするうえで Github アカウントが必要になります。</li>
+                </ul>
+                <h4>アプリケーションの準備</h4>
+                <p>ここでの説明は基本的には 「Owin.Security.Providers」 パッケージの導入手順です。細かいことは <a href="http://www.jerriepelser.com/blog/owin-oauth-provider-github">OWIN OAuth provider for GitHub</a> を参照してください。</p>
+                <p>Visual Studio でプロジェクトを作成します。</p>
+                <p>Web 配下の「ASP.NET アプリケーション」を選択します。</p>
+                <p><img src="images/2016-02-07-newProj.png" alt="プロジェクト作成ダイアログ" /></p>
+                <p>「ASP.NET 4.5.2 プロジェクトテンプレート」から「MVC」を選択しプロジェクトを作成します。(Azure でのホスティングをするかしないかとかは好きにしてください。)</p>
+                <p><img src="images/2016-02-07-webPj.png" alt="Web アプリケーション種別"/></p>
+                <p>NuGet パッケージの管理の GUI からやるか、パッケージマネージャーコンソールからやるかは好きにしていいですが、「Owin.Security.Providers」のパッケージを導入します。</p>
+                <pre>
+PM> Install-Package Owin.Security.Providers
+'.NETFramework,Version=v4.5.2' を対象とするプロジェクト 'WebApplication1' に関して、パッケージ 'Owin.Security.Providers.1.26.0' の依存関係情報の収集を試行しています
+DependencyBehavior 'Lowest' でパッケージ 'Owin.Security.Providers.1.26.0' の依存関係の解決を試行しています
+パッケージ 'Owin.Security.Providers.1.26.0' をインストールするアクションを解決しています
+パッケージ 'Owin.Security.Providers.1.26.0' をインストールするアクションが解決されました
+パッケージ 'Owin.Security.Providers.1.26.0' をフォルダー 'c:\users\kazuk\documents\visual studio 2015\Projects\WebApplication1\packages' に追加しています
+パッケージ 'Owin.Security.Providers.1.26.0' をフォルダー 'c:\users\kazuk\documents\visual studio 2015\Projects\WebApplication1\packages' に追加しました
+パッケージ 'Owin.Security.Providers.1.26.0' を 'packages.config' に追加しました
+'Owin.Security.Providers 1.26.0' が WebApplication1 に正常にインストールされました
+PM> 
+                </pre>
+                <p>Github にログインし、右上の自分のアイコンから「Settings」、左のリストから「Applications」を選択しタブから「Developer applications」を開き「Register new application」でアプリケーションを作成します。</p>
+                <p>重要なのは「Authorization callback URL」です。localhost上でテストする場合には 「http://localhost:アプリケーションのデバッグポート/signin-github」を指定します。あとは適当でいいです。</p>
+                <p>Register application をすると右側上のほうに Client ID、Client Secret がそれぞれ表示されますので、これをとっておいてください。</p>
+                <p>（もろもろスクリーンショット割愛）</p>
+                <p>「App_Start/Startup.Auth.cs」に以下を追加します。</p>
+                <p>冒頭、using のリストに</p>
+                <pre>using Owin.Security.Providers.GitHub;</pre>
+                <p>ConfigureAuth の末尾にて app.UseGithubAuthentication の呼び出しです。</p>
+<pre>
+app.UseGitHubAuthentication(
+    ConfigurationManager.AppSettings.Get("GithubClientId"),
+    ConfigurationManager.AppSettings.Get("GithubClientSecret") );
+</pre>
+                <p>自分は web.config の appSettings 配下に置いたのでそれを読むコードをさらすのは何も問題ありませんが、Client Id / Client Secret の管理は慎重に </p>
+                <h4>トークンを取得するためには何を知らなければいけないか</h4>
+                <p>まず、NuGet.org の <a href="https://www.nuget.org/packages/Owin.Security.Providers">Owin.Security.Providers</a> に行き Project Site を手繰って <a href="https://github.com/RockstarLabs/OwinOAuthProviders">RockstarLabs/OwinOAuthProviders(github)</a>を readme や wiki とかにドキュメンテーション無いか探しましょう。（ありません）</p>
+                <p>無駄な事をさせているわけでなく、手順です、次は Search ボックスで欲しいものを指定して探します。「github token」での<a href="https://github.com/RockstarLabs/OwinOAuthProviders/search?utf8=%E2%9C%93&q=github+token&type=Code">検索結果</a>で2つめの結果がドンピシャですね。</p>
+                <p><a href="https://github.com/RockstarLabs/OwinOAuthProviders/blob/master/Owin.Security.Providers/GitHub/Provider/GitHubAuthenticatedContext.cs#L49">GitHubAuthenticatedContext の AccessToken</a> を参照すれば良いわけです。</P>
+                <p>あとは検索で芋ずるです。 GitHubAuthenticatiedContext は <a href="https://github.com/RockstarLabs/OwinOAuthProviders/blob/master/Owin.Security.Providers/GitHub/Provider/GitHubAuthenticationProvider.cs#L23">GitHubAuthenticationProvider の OnAuthenticated</a> に渡される。 GitHubAuthenticationProvider は <a href="https://github.com/RockstarLabs/OwinOAuthProviders/blob/master/Owin.Security.Providers/GitHub/GitHubAuthenticationMiddleware.cs#L33">Options.Provider</a> にある、Options は <a href="https://github.com/RockstarLabs/OwinOAuthProviders/blob/master/Owin.Security.Providers/GitHub/GitHubAuthenticationExtensions.cs#L8">UseGitHubAuthentication に渡せる</a>。 </p>
+                <p>すでに記述済みの app.UseGitHubAuthentication に繋がりましたのでめでたしめでたしです。 Options を渡す呼び出しに変えればトークンを取得するまでは一直線です。</p>
+                <h4>お持ち帰りになりますか？食べていきますか？お届けですか？</h4>
+                <p>トークンを取得したまではまぁ良いです。ユーザーのプロファイルにそれを入れたいとして Github が認証を通しただけでまだローカルのユーザーの誰なのかも良く分からない段階です。トークンをユーザーに紐づけて保存する場所まで何らかの手段で持ち回る必要があるでしょう。</p>
+                <p>OAuth を知っている人ならまず無理と分かる方法ですが、OWIN の Context に乗せてみましょう。ユーザーと Github 、ASP.NET MVCや ASP.NET Identity、OWIN がどのような動きをするのかを把握するには間違った手段でもコードにしてみてブレークポイントを設定して動かすのが重要です。</p>
+                <p>ブレークポイントを設定するのは OwinContext へ設定する場所と、AccountController の ExternalLoginCallback です。</p>
+                <p>ExternalLoginCallback は OAuth 認証されたユーザーの情報を取得する　AuthenticationManager.GetExternalLoginInfoAsync の呼び出しと、それを内部ユーザーの認証に紐づける SignInManager.ExternalSignInAsync の呼び出し、および内部ユーザーが居なかった場合の登録への遷移を含む OAuth での認証の後半の殆どを担っていますのでここにトークンが渡らなければとれる意味も無い、ここにトークンが渡る方法を考えるべきということです。</p>
+                <p>OwinContext への値の設定をする OnAuthenticated ハンドラを持つ GitHubAuthenticationOptions の設定は以下の通りです。
+<pre>
+var options = new GitHubAuthenticationOptions()
+{
+    ClientId = ConfigurationManager.AppSettings.Get("GithubClientId"),
+    ClientSecret = ConfigurationManager.AppSettings.Get("GithubClientSecret"),
+    Provider = new GitHubAuthenticationProvider
+    {
+        OnAuthenticated = Authenticated
+    }
+};
+app.UseGitHubAuthentication(options);
+</pre>
+                <p>呼ばれる側のAuthenticated は以下</p>
+<pre>
+private Task Authenticated(GitHubAuthenticatedContext context)
+{
+    context.OwinContext.Set("accessToken", context.AccessToken);
+
+    return Task.FromResult(0);
+}
+</pre>
+                <p>OwinContext から値を取得するには Context.GetOwinContext().Get&lt;string&gt;("accessToken") でいいでしょう。</p>
+                <p>実際として取れません。</p>
+                <p>なぜ取れないのか。注目するべきはそれぞれの Request の URL でしょうか。</p>
+                <p>まず Authenticated での OwinContext から Request を確認します。</p>
+                <img src="images/Request-Signin-Github.png" />
+                <p>GitHub 側へ OAuth の設定で入れた Callback アドレスになっている事がわかります。 </p>
+                <p>ExternalLoginCallback で Request.Path を見てみると </p>
+                <img src="images/Request-ExternalLoginCallback.png" />
+                <p>/Account/ExtenalLoginCallback になってました。 OWIN / KATANA の OAuth の Callback 処理の突っ込みどころというか盛大に勘違いしやすい所がこれですCallbackの処理で Token を Middleware が取って AccountController.ExternalLoginCallback に処理が回って来るのではなく、別のリクエストとして飛んでくるわけです。</p>
+                <pre class="mscgen_js">
+                    msc {
+                        b [label="Browser"], s [label="Server"], g [label="Github"];
+                        
+                        b->g [label="login"];
+                        g>>b [label="redirect /signin-github?--token--"];
+                        b->s [label="GET /signin-github"];
+                        s>>b [label="redirect /Account/ExternalLoginCallback\nSet Cookie"];
+                        b->s [label="GET /Account/ExternalLoginCallback\nCookie"];
+                    }
+                </pre>
+                <p>結果として、別のリクエスト＝別のコンテキストです。 Context を通しては値のやり取りはできません。</p>
+                <p>別の手段を考えなければならないでしょう。</p>
+                <p>ここで二つのロジックが別の世界、「OWIN な Middleware」と「ASP.NET MVCなController」に属しているので、ASP.NET のセッションは Middleware で使えないしCookieはブラウザやProxyから丸見えですので Access Tokenといったセキュリティセンシティブな物を乗せてしまって良いのか、そういったもろもろの事を考えてしまうと割と躊躇してしまいます。(するようにしましょう、お願いだから)</p>
+                <p>認証に関わる所の処理なので下手な真似をしたら死です、安全を期すために暗号化するとかもろもろを考えるのもいいですが、この OnAuthenticated と ExternalLoginCallback はユーザーの認証情報という安全を期すべきデータを受け渡すという意味で繋がっている部分です。十分に安全な経路がすでにあるはずなのです。</p>
+                <h4>OAuth と ClaimsIdentity</h4>
+                <p>GitHubAuthenticatedContext には Identity プロパティがあり、ExternalLoginInfo には ExternalIdentity プロパティがあり、どちらも ClaimsIdentity になっています。</p>
+                <p>GitHubAuthenticatedContext に入ってくる ClaimsIdentity は GitHub での認証結果そのものですし、OnAuthenticated で解読された物は ExternalLoginCallback へ渡される為に暗号化がされています。(<a href="http://openid-foundation-japan.github.io/draft-ietf-oauth-json-web-token-11.ja.html#Algorithms">[ドラフト]JSON Web Token (JWT) 8.  暗号化アルゴリズム</a>)</p>
+                <p>この ClaimsIdentity を一連の認証処理中に安全に引き渡すのが OAuth の役割であり機能なのでここにデータを入れて受け渡すのは本質的に安全です。(あなたのサーバのセキュリティが守られていて、OAuthがちゃんと機能しているのであれば安全です)</p>
+                <p><a href="https://msdn.microsoft.com/en-us/library/system.security.claims.claimsidentity.addclaim(v=vs.110).aspx">ClaimsIdentity.AddClaim</a> で適当なユーザー定義 Claim を作って ExternalLoginCallback で ExternalIdentity の Claim を取得すれば github の access token を安全に取り扱ったといえるでしょう。</p> 
+<pre>
+private Task Authenticated(GitHubAuthenticatedContext context)
+{
+    context.Identity.AddClaim(
+            new Claim( "exttoken", context.AccessToken ));
+
+    return Task.FromResult(0);
+}
+</pre>
+                <p>これを取り出す側は以下のようになります。</p>
+<pre>
+var githubToken = 
+    loginInfo.ExternalIdentity
+        .Claims
+        .Single(c =&gt; c.Type == "exttoken")
+        .Value;
+</pre>
+                <p>あとは Octokit を導入してクレデンシャルに token を設定して GithubClient を生成すれば API アクセスする事ができるでしょう。</p>
+<pre>
+private static IGitHubClient CreateGitHubClient(string githubToken)
+{
+    ICredentialStore store = new InMemoryCredentialStore(
+        new Credentials(githubToken)
+        );
+    return new GitHubClient(
+        new ProductHeaderValue("YourAppName"), 
+        store);
+}                
+</pre>
+                <h3>まとめ</h3>
+                <ul>
+                    <li>Authorization callback URL での設定URLで ExtenalLoginCallback　が呼ばれるわけじゃない。勘違いしやすいので注意が必要。</li>
+                    <li>リクエストまたぐとすぐに Cookie や Session を使いたがる人は多いけど、世界違うと通らなかったり安全か？とかとか考えてね。</li>
+                    <li>安全？って聞かれたら即「暗号化します！」とかいう奴の脳みそは条件反射してるだけで働いてないと思うの。</li>
+                    <li>OAuth は Claims な Identity (JWTとか)を安全に受け渡すための物なので、OAuth のシーケンス中の ClaimsIdentity は安全とみなせるからそっち使えばいいと思うよ。</li>
+                    <li>API 叩きすぎて GitHub に睨まれるとプログラマ人生が詰むかもしれないので注意ね。</li>
+                </ul>
+            </section>
+        </div>
+    </body>
+</html>

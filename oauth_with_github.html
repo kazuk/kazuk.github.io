@@ -104,10 +104,10 @@ private Task Authenticated(GitHubAuthenticatedContext context)
                 <p>実際として取れません。</p>
                 <p>なぜ取れないのか。注目するべきはそれぞれの Request の URL でしょうか。</p>
                 <p>まず Authenticated での OwinContext から Request を確認します。</p>
-                <img src="images/Request-Signin-Github.png" />
+                <img src="images/Request-Signin-Github.PNG" />
                 <p>GitHub 側へ OAuth の設定で入れた Callback アドレスになっている事がわかります。 </p>
                 <p>ExternalLoginCallback で Request.Path を見てみると </p>
-                <img src="images/Request-ExternalLoginCallback.png" />
+                <img src="images/Request-ExternalLoginCallback.PNG" />
                 <p>/Account/ExtenalLoginCallback になってました。 OWIN / KATANA の OAuth の Callback 処理の突っ込みどころというか盛大に勘違いしやすい所がこれですCallbackの処理で Token を Middleware が取って AccountController.ExternalLoginCallback に処理が回って来るのではなく、別のリクエストとして飛んでくるわけです。</p>
                 <pre class="mscgen_js">
                     msc {
